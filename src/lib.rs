@@ -239,13 +239,17 @@ impl<'a> App<'a> {
             self.highscore = self.score;
 
             match fs::create_dir("data") {
-                Ok(_) => {
-                    let mut f = fs::File::create("data/highscore.txt").unwrap();
-                    match f.write_all(str_to_write.as_bytes()) {
+                Ok(_) => (),
+                Err(err_msg) => println!("{:?}", err_msg),
+            }
+            
+            match fs::File::create("data/highscore.txt") {
+                Ok(mut file) => {
+                    match file.write_all(str_to_write.as_bytes()) {
                         Ok(_) => (),
                         Err(err_msg) => println!("{:?}", err_msg),
                     }
-                }
+                },
                 Err(err_msg) => println!("{:?}", err_msg),
             }
            

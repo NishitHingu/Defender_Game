@@ -13,7 +13,7 @@ use basic_game::App;
 
 fn main() {
     // Create a new game and run it.
-    let mut app = App::new(GraphicsConfig::new("space_game", 500.0, 600.0));
+    let mut app = App::new(GraphicsConfig::new("space_game", 400.0, 600.0));
 
     let mut events = Events::new(EventSettings::new());
     while let Some(e) = events.next(&mut app.window.settings) {

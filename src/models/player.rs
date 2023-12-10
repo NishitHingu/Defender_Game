@@ -6,7 +6,7 @@ use crate::geom::Direction;
 use super::GameObject;
 
 const PLAYER_SPEED: f64 = 1.75;
-const PLAYER_SIZE: f64 = 20.0;
+const PLAYER_SIZE: f64 = 25.0;
 const PLAYER_HEALTH: f64 = 1000.0;
 
 pub struct Player {
