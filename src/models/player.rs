@@ -1,32 +1,35 @@
-use graphics::{Context, rectangle, polygon, Transformed, color};
+use graphics::{Context, polygon, Transformed, color};
 use opengl_graphics::GlGraphics;
-use crate::geom::{self, Position, restrict_to_bounds};
+use crate::geom::{self, restrict_to_bounds};
 use crate::geom::Direction;
 
 use super::GameObject;
 
-const PLAYER_SPEED: f64 = 2.0;
+const PLAYER_SPEED: f64 = 1.5;
 const PLAYER_SIZE: f64 = 20.0;
 // Drift for this long after movement key is released.
 // You don't came to a hard stop in space!
 const PLAYER_DRIFT: f64 = 0.2;
+const PLAYER_HEALTH: f64 = 1000.0;
 
 pub struct Player {
     pub pos: geom::Position,
     pub dir: geom::Direction,
+    pub stop_movement: bool,
+    pub health: f64,
     pub size: f64,
     pub dift_ttl: f64,
-    pub stop_movement: bool,
 }
 
 impl Player {
     pub fn new (x: f64, y: f64) -> Player {
         Player {
             dir: Direction::EAST,
-            dift_ttl: 0.0,
-            stop_movement: true,
             pos: geom::Position::new(x, y),
+            stop_movement: true,
+            health: PLAYER_HEALTH,
             size: PLAYER_SIZE,
+            dift_ttl: 0.0,
         }
     }
 
@@ -79,7 +82,7 @@ impl GameObject for Player {
             Direction::WEST => self.pos.x -= PLAYER_SPEED,
         }
 
-        restrict_to_bounds(&mut self.pos, [size.width, size.height, size.width, size.height]);
+        restrict_to_bounds(&mut self.pos, [size.width, size.height]);
     }
 }
 

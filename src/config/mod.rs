@@ -2,6 +2,7 @@ use glutin_window::GlutinWindow as Window;
 use piston::window::{ Size, WindowSettings };
 use opengl_graphics::{ GlGraphics, OpenGL };
 
+pub mod font;
 pub struct GraphicsConfig {
     // OpenGL drawing backend
     pub gl: GlGraphics,

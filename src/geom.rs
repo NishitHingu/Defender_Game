@@ -18,7 +18,7 @@ impl Position {
     }
 }
 
-pub fn restrict_to_bounds(pos: &mut Position, bounds: [f64; 4]) {
+pub fn restrict_to_bounds(pos: &mut Position, bounds: [f64; 2]) {
     // Make sure movement is within the window bounds.
     
     if pos.x < 0.0 {
