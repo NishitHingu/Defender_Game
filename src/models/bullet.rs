@@ -5,7 +5,7 @@ use crate::geom::Position;
 use super::GameObject;
 
 const BULLET_SIZE: f64 = 2.0;
-const BULLET_SPEED: f64 = 1.0;
+const BULLET_SPEED: f64 = 2.0;
 
 pub struct Bullet {
     pos: Position,

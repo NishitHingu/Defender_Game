@@ -1,5 +1,7 @@
+use std::{fs, io::Write};
+
 use geom::Direction;
-use graphics::color::BLACK;
+use graphics::{color::BLACK, color::WHITE, color::{RED, GREEN}, color::CYAN};
 use models::GameObject;
 use models::bullet::Bullet;
 use opengl_graphics::{GlyphCache, TextureSettings};
@@ -18,6 +20,7 @@ pub mod models;
 const SHOOT_COOLDOWN: u32 = 50;
 const ENEMY_SPAWN_COOLDOWN: u64 = 500;
 
+#[derive(PartialEq)]
 enum GameStatus {
     Normal,
     Win,
@@ -34,6 +37,7 @@ pub struct App<'a>{
     fire_bullet: bool,
     score: u32,
     ammo: u32,
+    highscore: u32,
     shoot_cooldown: u32,
     uptime: u64,
 }
@@ -43,7 +47,7 @@ impl<'a> App<'a> {
         let size = window.size;
 
         let (x, y) = (f64::from(size.width / 2.0),
-                      f64::from(size.height / 2.0));
+                      f64::from(size.height / 1.25));
 
         let player = Player::new(x, y);
 
@@ -59,6 +63,23 @@ impl<'a> App<'a> {
             enemy_spawn_columns.push(i);
             i += size.width / 10.0;
         }
+        
+        let file_content = match fs::read_to_string("data/highscore.txt") {
+            Ok(input) => input,
+            Err(error_msg) => {
+                println!("{:?}", error_msg);
+                let empty_string: String = String::new();
+                empty_string
+            }
+        };
+        
+        let highscore: u32 = match file_content.parse::<u32>() {
+            Ok(score) => score,
+            Err(err_msg) => {
+                println!("{:?}", err_msg);
+                0
+            }
+        };
 
         App {
             glyph_cache,
@@ -72,6 +93,7 @@ impl<'a> App<'a> {
             shoot_cooldown: SHOOT_COOLDOWN,
             ammo: 20,
             score: 0,
+            highscore,
             uptime: 0,
         }
     }
@@ -95,24 +117,33 @@ impl<'a> App<'a> {
                     }
         
                     let curr_score = format!("Score: {:?}", self.score);
-                    draw_text(curr_score.as_str(), [12.0, 24.0], 12, &mut self.glyph_cache, &c, gl);
+                    draw_text(WHITE, curr_score.as_str(), [12.0, 24.0], 12, &mut self.glyph_cache, &c, gl);
         
                     let curr_score = format!("Health: {:?}", self.player.health);
-                    draw_text(curr_score.as_str(), [self.window.size.width - 125.0, 24.0], 12, &mut self.glyph_cache, &c, gl);
+                    draw_text(WHITE, curr_score.as_str(), [self.window.size.width - 125.0, 24.0], 12, &mut self.glyph_cache, &c, gl);
 
 
                     let ammo = format!("Bullets: {:?}", self.ammo);
-                    draw_text(ammo.as_str(), [self.window.size.width - 125.0, self.window.size.height - 24.0], 12, &mut self.glyph_cache, &c, gl);
+                    draw_text(WHITE, ammo.as_str(), [self.window.size.width - 125.0, self.window.size.height - 24.0], 12, &mut self.glyph_cache, &c, gl);
                 },
-                GameStatus::Died => {
-                    draw_text("DEAD", [self.window.size.width / 3.0, self.window.size.height / 2.0 - 32.0], 32, &mut self.glyph_cache, &c, gl);
+                GameStatus::Died | GameStatus::Win => {
+                    let color;
+                    let state;
+                    if self.game_status == GameStatus::Died {
+                        color = RED;
+                        state = "DEAD";
+                    }
+                    else {
+                        color = GREEN;
+                        state = "WIN";
+                    }
+
+                    draw_text(color, state, [self.window.size.width / 3.0, self.window.size.height / 2.0 - 32.0], 32, &mut self.glyph_cache, &c, gl);
                     let curr_score = format!("Score: {:?}", self.score);
-                    draw_text(curr_score.as_str(), [self.window.size.width / 3.0, self.window.size.height / 2.0 + 18.0], 18, &mut self.glyph_cache, &c, gl);
-                }, 
-                GameStatus::Win => {
-                    draw_text("Win", [self.window.size.width / 3.0, self.window.size.height / 2.0 - 32.0], 32, &mut self.glyph_cache, &c, gl);
-                    let curr_score = format!("Score: {:?}", self.score);
-                    draw_text(curr_score.as_str(), [self.window.size.width / 3.0, self.window.size.height / 2.0 + 18.0], 18, &mut self.glyph_cache, &c, gl);
+                    let high_score = format!("Highscore: {:?}", self.highscore);
+                    draw_text(WHITE, curr_score.as_str(), [self.window.size.width / 3.0, self.window.size.height / 2.0 + 18.0], 18, &mut self.glyph_cache, &c,  gl);
+                    draw_text(WHITE, high_score.as_str(), [self.window.size.width / 3.0, self.window.size.height / 2.0 + 40.0], 18, &mut self.glyph_cache, &c, gl);
+                    draw_text(CYAN, "Click to restart", [self.window.size.width / 3.0, self.window.size.height / 2.0 + 100.0], 18, &mut self.glyph_cache, &c, gl);
                 }
             }
         });
@@ -120,6 +151,10 @@ impl<'a> App<'a> {
     }
 
     pub fn update(&mut self, args: &UpdateArgs) {
+        if self.game_status != GameStatus::Normal {
+            return;
+        };
+        
         self.uptime += 1;
         
         // Update Players health
@@ -135,6 +170,8 @@ impl<'a> App<'a> {
         if self.player.health <= 0.0
         {
             self.game_status = GameStatus::Died;
+            self.update_highscore();
+            return;
         }
         
         // Update players parameters as other updattions use this parameters.
@@ -147,6 +184,8 @@ impl<'a> App<'a> {
         if difficulty > ENEMY_SPAWN_COOLDOWN
         {
             self.game_status = GameStatus::Win;
+            self.update_highscore();
+            return;
         }
 
         // Max difficulty is spawning enemies after every 100 updates.
@@ -193,6 +232,26 @@ impl<'a> App<'a> {
         } 
     }
 
+    fn update_highscore(&mut self) {
+        let str_to_write;
+        if self.score > self.highscore {
+            str_to_write = format!("{:?}", self.score);
+            self.highscore = self.score;
+
+            match fs::create_dir("data") {
+                Ok(_) => {
+                    let mut f = fs::File::create("data/highscore.txt").unwrap();
+                    match f.write_all(str_to_write.as_bytes()) {
+                        Ok(_) => (),
+                        Err(err_msg) => println!("{:?}", err_msg),
+                    }
+                }
+                Err(err_msg) => println!("{:?}", err_msg),
+            }
+           
+        }
+    }
+
     fn spawn_enemies (&mut self, difficulty: u64) {
         if self.uptime % (ENEMY_SPAWN_COOLDOWN - difficulty) == 1
         {
@@ -206,7 +265,30 @@ impl<'a> App<'a> {
         }
     }
 
+    fn reset_game(&mut self) {
+        self.player.reset(self.window.size.width / 2.0, self.window.size.height / 1.25);
+        self.enemies.clear();
+        self.bullets.clear();
+        self.game_status = GameStatus::Normal;
+        self.fire_bullet = false;
+        self.shoot_cooldown = SHOOT_COOLDOWN;
+        self.ammo = 20;
+        self.score = 0;
+        self.uptime = 0;
+    }
+
     pub fn input (&mut self, button: &Button, press_event: bool) {
+
+
+        // Restart game on mouse click after it has ended.
+        if !press_event {
+            if let Button::Mouse(_) = *button {
+                if self.game_status != GameStatus::Normal {
+                    self.reset_game();
+                }
+                return;
+            }
+        }
 
         let mut direction: Direction = self.player.dir.clone();
         if let Button::Keyboard(key) = *button {

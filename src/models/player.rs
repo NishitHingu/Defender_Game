@@ -5,11 +5,8 @@ use crate::geom::Direction;
 
 use super::GameObject;
 
-const PLAYER_SPEED: f64 = 1.5;
+const PLAYER_SPEED: f64 = 1.75;
 const PLAYER_SIZE: f64 = 20.0;
-// Drift for this long after movement key is released.
-// You don't came to a hard stop in space!
-const PLAYER_DRIFT: f64 = 0.2;
 const PLAYER_HEALTH: f64 = 1000.0;
 
 pub struct Player {
@@ -18,7 +15,6 @@ pub struct Player {
     pub stop_movement: bool,
     pub health: f64,
     pub size: f64,
-    pub dift_ttl: f64,
 }
 
 impl Player {
@@ -29,12 +25,20 @@ impl Player {
             stop_movement: true,
             health: PLAYER_HEALTH,
             size: PLAYER_SIZE,
-            dift_ttl: 0.0,
         }
     }
 
     pub fn movement (&mut self, dir: Direction) {
         self.dir = dir;
+    }
+
+    pub fn reset (&mut self, x: f64, y:f64)
+    {
+        self.dir = Direction::EAST;
+        self.pos.x = x;
+        self.pos.y = y;
+        self.stop_movement = true;
+        self.health = PLAYER_HEALTH;
     }
 }
 

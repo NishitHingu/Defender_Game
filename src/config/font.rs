@@ -1,13 +1,12 @@
-use graphics::color::WHITE;
-use graphics::{Context, DrawState, Transformed};
+use graphics::{Context, DrawState, Transformed, color::WHITE};
 use graphics::text::Text;
 use opengl_graphics::{GlGraphics, GlyphCache};
 
-pub fn draw_text(txt: &str, pos: [f64; 2], size: u32, gc: &mut GlyphCache, c: &Context, gl: &mut GlGraphics) {
+pub fn draw_text(color:[f32; 4], txt: &str, pos: [f64; 2], size: u32, gc: &mut GlyphCache, c: &Context, gl: &mut GlGraphics) {
 
     let transform = c.transform.trans(pos[0], pos[1]);
 
-    Text::new_color(WHITE, size)
+    Text::new_color(color, size)
         .draw(txt, gc, &DrawState::default(), transform, gl)
         .unwrap();
 }
@@ -20,5 +19,5 @@ pub fn draw_center(txt: &str, size: u32, bounds: [f64; 2], gc: &mut GlyphCache, 
     let x = (bounds[0] / 2.0) - (num_chars * half_size) / 2.0;
     let y = (bounds[1] / 2.0) - half_size;
 
-    draw_text(txt, [x, y], size, gc, c, gl);
+    draw_text(WHITE, txt, [x, y], size, gc, c, gl);
 }
