@@ -33,7 +33,7 @@ impl GameObject for Bullet {
         ellipse(color::RED, [0.0, 0.0, radius, radius], transform, gl);
     }
 
-    fn update(&mut self, dt: f64, size: piston::Size) {
+    fn update(&mut self, _dt: f64, size: piston::Size) {
         self.pos.y -= BULLET_SPEED;
 
         if self.pos.y <= 0.0 || self.pos.y > size.height {

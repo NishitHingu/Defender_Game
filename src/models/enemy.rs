@@ -45,7 +45,7 @@ impl GameObject for Enemy {
         rectangle(WHITE, shape, transform, gl);
     }
 
-    fn update(&mut self, dt: f64, size: piston::Size) {
+    fn update(&mut self, _dt: f64, size: piston::Size) {
         // print!("{:?} {:?} \n", (self.dir), self.pos);
         self.pos.y += ENEMY_SPEED;
 

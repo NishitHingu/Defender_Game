@@ -69,7 +69,7 @@ impl GameObject for Player {
         );
     }
 
-    fn update(&mut self, dt: f64, size: piston::Size) {
+    fn update(&mut self, _dt: f64, size: piston::Size) {
         if self.stop_movement {
             return;
         }

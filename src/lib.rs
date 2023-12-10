@@ -1,6 +1,6 @@
 use geom::Direction;
 use graphics::color::BLACK;
-use models::GameObject;
+use models::{GameObject, enemy};
 use models::bullet::Bullet;
 use opengl_graphics::{GlyphCache, TextureSettings};
 use piston::input::{RenderArgs, UpdateArgs, Button, Key};
@@ -29,10 +29,11 @@ pub struct App<'a>{
     game_status: GameStatus,
     enemies: Vec<Enemy>,
     bullets: Vec<Bullet>,
+    enemy_spawn_columns: Vec<f64>,
     fire_bullet: bool,
     score: u32,
+    ammo: u32,
     shoot_cooldown: u32,
-    speed: f64,
     uptime: u64,
 }
 
@@ -50,6 +51,14 @@ impl<'a> App<'a> {
         let glyph_cache = GlyphCache::new(assets.join("fonts/PxPlus_IBM_VGA8.ttf"), (), TextureSettings::new())
         .expect("Unable to load font");
 
+        let mut i = size.width / 10.0;
+        let mut enemy_spawn_columns: Vec<f64> = Vec::new();
+        while i < size.width
+        {
+            enemy_spawn_columns.push(i);
+            i += size.width / 10.0;
+        }
+
         App {
             glyph_cache,
             window,
@@ -57,11 +66,12 @@ impl<'a> App<'a> {
             game_status: GameStatus::Normal,
             enemies: Vec::new(),
             bullets: Vec::new(),
+            enemy_spawn_columns,
             fire_bullet: false,
             shoot_cooldown: SHOOT_COOLDOWN,
+            ammo: 20,
             score: 0,
             uptime: 0,
-            speed: 0.0,
         }
     }
 
@@ -88,6 +98,10 @@ impl<'a> App<'a> {
         
                     let curr_score = format!("Health: {:?}", self.player.health);
                     draw_text(curr_score.as_str(), [self.window.size.width - 125.0, 24.0], 12, &mut self.glyph_cache, &c, gl);
+
+
+                    let ammo = format!("Bullets: {:?}", self.ammo);
+                    draw_text(ammo.as_str(), [self.window.size.width - 125.0, self.window.size.height - 24.0], 12, &mut self.glyph_cache, &c, gl);
                 },
                 GameStatus::Died => {
                     draw_text("DEAD", [self.window.size.width / 3.0, self.window.size.height / 2.0 - 32.0], 32, &mut self.glyph_cache, &c, gl);
@@ -107,7 +121,6 @@ impl<'a> App<'a> {
     pub fn update(&mut self, args: &UpdateArgs) {
         self.uptime += 1;
         
-
         // First we update Players health
         for enemy in self.enemies.iter_mut() {
             enemy.update(args.dt, self.window.size);
@@ -132,16 +145,13 @@ impl<'a> App<'a> {
             self.shoot_cooldown -= 1;
         }
 
-        if self.fire_bullet {
+        if self.fire_bullet && self.ammo > 0 {
             self.fire_bullet = false;
             self.bullets.push(Bullet::new(self.player.pos.x, self.player.pos.y));
+            self.ammo -= 1;
         }
 
-        if self.uptime % 500 == 1
-        {
-            self.enemies.push(Enemy::new(self.window.size.width / 4.0, 0.0));
-            self.enemies.push(Enemy::new(self.window.size.width - (self.window.size.width / 4.0), 0.0));
-        }
+        self.spawn_enemies();
 
         for bullet in self.bullets.iter_mut()
         {
@@ -153,6 +163,7 @@ impl<'a> App<'a> {
                     enemy.health = 0.0;
                     bullet.destroy = true;
                     self.score += 1;
+                    self.ammo += 2;
                     break;
                 }
             }
@@ -168,10 +179,29 @@ impl<'a> App<'a> {
         
     }
 
+    fn spawn_enemies (&mut self) {
+
+        let mut difficulty = self.uptime / 50; // We increase difficulty after every interval.
+        
+        // Max difficulty is spawning enemies after every 100 updates.
+        // Hence we cannot have difficulty less more than 400.
+        if difficulty > 400 {
+            difficulty = 400;
+        }
+
+        if self.uptime % (500 - difficulty) == 1
+        {
+            let mut rng = thread_rng(); 
+            let arr: [f32; 10] = rng.gen(); // Every column has its own random number.
+            for i in 0..9 {
+                if arr[i] > 0.7 {
+                    self.enemies.push(Enemy::new(self.enemy_spawn_columns[i], 0.0));
+                }
+            }
+        }
+    }
+
     pub fn input (&mut self, button: &Button, press_event: bool) {
-        // let mut rng = thread_rng();
-        // let arr1: [f32; 32] = rng.gen();        // array construction
-        // print!("{:?}\n", arr1);
 
         let mut direction: Direction = self.player.dir.clone();
         if let Button::Keyboard(key) = *button {
