@@ -1,6 +1,6 @@
 use geom::Direction;
 use graphics::color::BLACK;
-use models::{GameObject, enemy};
+use models::GameObject;
 use models::bullet::Bullet;
 use opengl_graphics::{GlyphCache, TextureSettings};
 use piston::input::{RenderArgs, UpdateArgs, Button, Key};
@@ -16,6 +16,7 @@ pub mod config;
 pub mod models;
 
 const SHOOT_COOLDOWN: u32 = 50;
+const ENEMY_SPAWN_COOLDOWN: u64 = 500;
 
 enum GameStatus {
     Normal,
@@ -121,7 +122,7 @@ impl<'a> App<'a> {
     pub fn update(&mut self, args: &UpdateArgs) {
         self.uptime += 1;
         
-        // First we update Players health
+        // Update Players health
         for enemy in self.enemies.iter_mut() {
             enemy.update(args.dt, self.window.size);
             if enemy.defense_breached {
@@ -130,7 +131,7 @@ impl<'a> App<'a> {
             }
         }
         
-        // If players health becomes zero: lost.
+        // If players health becomes zero: Dead.
         if self.player.health <= 0.0
         {
             self.game_status = GameStatus::Died;
@@ -139,6 +140,22 @@ impl<'a> App<'a> {
         // Update players parameters as other updattions use this parameters.
         // self.rotation += self.speed * args.dt;
         self.player.update(args.dt, self.window.size);
+
+        let mut difficulty = self.uptime / 50; // We increase difficulty after every interval.
+        
+        // If someone survives till difficulty 500, declare win.
+        if difficulty > ENEMY_SPAWN_COOLDOWN
+        {
+            self.game_status = GameStatus::Win;
+        }
+
+        // Max difficulty is spawning enemies after every 100 updates.
+        // Hence we cannot have difficulty less more than 400.
+        if difficulty > (ENEMY_SPAWN_COOLDOWN - 100) {
+            difficulty = ENEMY_SPAWN_COOLDOWN - 100;
+        }
+
+        self.spawn_enemies(difficulty);
 
         // Update shoot cooldown and fire bullet if reloaded.
         if self.shoot_cooldown > 0 {
@@ -151,8 +168,7 @@ impl<'a> App<'a> {
             self.ammo -= 1;
         }
 
-        self.spawn_enemies();
-
+        // Check for hits.
         for bullet in self.bullets.iter_mut()
         {
             for enemy in self.enemies.iter_mut() {
@@ -174,22 +190,11 @@ impl<'a> App<'a> {
         self.bullets.retain(|bullet| false == bullet.destroy);
         for bullet in self.bullets.iter_mut() {
             bullet.update(args.dt, self.window.size);
-        }
-        
-        
+        } 
     }
 
-    fn spawn_enemies (&mut self) {
-
-        let mut difficulty = self.uptime / 50; // We increase difficulty after every interval.
-        
-        // Max difficulty is spawning enemies after every 100 updates.
-        // Hence we cannot have difficulty less more than 400.
-        if difficulty > 400 {
-            difficulty = 400;
-        }
-
-        if self.uptime % (500 - difficulty) == 1
+    fn spawn_enemies (&mut self, difficulty: u64) {
+        if self.uptime % (ENEMY_SPAWN_COOLDOWN - difficulty) == 1
         {
             let mut rng = thread_rng(); 
             let arr: [f32; 10] = rng.gen(); // Every column has its own random number.
